@@ -195,7 +195,7 @@ def main(samplesize):
                                 if len(satisfied) > samplesize: #delete the worst move
                                     satisfied.pop()
                                     pairs[-1].pop()
-                                    newclusters.remove(sorted(newclusters, key=lambda x: x[1])[0]) #not strictly necessary, but memory
+                                    #newclusters.remove(min(newclusters, key=lambda x: x[1])) #not strictly necessary, but memory
                                     if not printed:
                                         print('.', end='')
                                         printed = True
