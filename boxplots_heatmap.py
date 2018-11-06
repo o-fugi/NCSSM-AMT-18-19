@@ -68,8 +68,8 @@ def assignDistricts(percent_dem, prec_dim_x, prec_dim_y, district_dim_x, distric
     return by_district_arr
 
 def runExample():
-    state = makeCityDistribution(percent_dem, 4, .96, 0.5)
-    boxplot_arr = assignDistricts(state)
+    state = makeCityDistribution(5, 0.96, 0.5, 64, 64) 
+    boxplot_arr = assignDistricts(state, 64, 64, 4, 4)
 
     boxplot_arr = np.sort(boxplot_arr, axis=0)
     organized_medians = [np.median(district) for district in boxplot_arr]
@@ -78,11 +78,11 @@ def runExample():
 
     ax.set_xlabel("district")
     ax.set_ylabel("percent Democratic")
-    ax.axis([1, district_dim_x*district_dim_y, 0.45, 0.55])
+    ax.axis([1, 16, 0.45, 0.55])
     plt.show()
 
-def sigmoidShift(state, c):
-    return [1/(1+(1/i-1)*np.exp(-4/(1-4/3*pow(i,2))*c)) for i in state]
+def sigmoidShift(state, c, a):
+    return [1/(1+(1/i-1)*np.exp(-4/(1-4/3*pow(a,2))*c)) for i in state]
 
 # heatmap example: create a lot of maps with heatmaps for slope and linearity of boxplots
 def scratchWork():
@@ -256,7 +256,8 @@ def analysisExample():
 
 def voteSeatCharts():
     #constants
-    swing_range = np.arange(-0.3, 0.3, 0.05)
+    a = 0.1
+    swing_range = np.arange(-a, a, 0.01)
 
     #inputs
     intensity = 0.96
@@ -268,7 +269,7 @@ def voteSeatCharts():
     #outputs
     vc_curves = [] # one vote-seat curve for each intensity
 
-    intensity_range = np.arange(0.05, 1.0, 0.05)
+    intensity_range = np.arange(0.9, 1.0, 0.01)
     cities_range = np.arange(1, 10, 1)
     if(district_dim_x == district_dim_y):
         prec_dim_x_range = np.arange(district_dim_x, prec_dim_y, district_dim_x)
@@ -276,7 +277,8 @@ def voteSeatCharts():
     iterator_range = intensity_range
     iterator_string = "intensity"
 
-    for intensity in iterator_range:
+    fig, axes = plt.subplots(nrows=5, ncols=2)
+    for intensity, ax in zip(iterator_range, axes.flat):
         # create simulated state
         state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y) 
         # create ensemble
@@ -287,7 +289,7 @@ def voteSeatCharts():
         # find seats won
         swing_votes = []
         for swing in swing_range:
-            swing_medians = sigmoidShift(distr_medians,swing)
+            swing_medians = sigmoidShift(distr_medians,swing, a)
             seats_won = 0
             for num, median in enumerate(swing_medians):
                 if median > 0.5:
@@ -299,7 +301,9 @@ def voteSeatCharts():
                 x = 0
             fractional_won = seats_won + x
             swing_votes.append(fractional_won) # this is a vote-seat curve
-        print(swing_votes)
+        ax.set_ylabel("votes won")
+        ax.set_title("intensity = %f" % intensity)
+        ax.plot(swing_range, swing_votes)
         vc_curves.append(swing_votes) #add to the list of vote-seat curves
         # plot the chart
         # fig = plt.figure(1)
@@ -317,8 +321,11 @@ def voteSeatCharts():
         return vs_chart, ax
     
     anim = FuncAnimation(fig, update, frames=np.arange(0, len(iterator_range)))
+    plt.tight_layout()
     plt.show()
 
     
-analysisExample()
+
+    
+#analysisExample()
 voteSeatCharts()
