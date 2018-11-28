@@ -6,11 +6,13 @@ import itertools
 import time
 from termcolor import colored
 
-area_fudge = 0.4
+area_fudge = 0.8
+state_district_assigned_list = []
 
 #input of state map and number of districts
-#output of array where every row is a districting and every column is a district
+#output of array where every row is a district and every column is a districting
 def assignDistrictsVoronoi(state, district_num, desired_districtings):
+    state_district_assigned_list = []
     districting_list = np.ndarray([desired_districtings, district_num]) #this is the returned list of percent_dem values for each district
     district_count = 0 # number of districtings made so far
 
@@ -36,7 +38,7 @@ def assignDistrictsVoronoi(state, district_num, desired_districtings):
                     min_dist = min(dist, min_dist)
 
         state_district_assigned = state_district_assigned.astype(int)
-        print(state_district_assigned)
+        # print(state_district_assigned)
 
         adjacencies = []
         for row_idx, row in enumerate(state_district_assigned):
@@ -68,6 +70,7 @@ def assignDistrictsVoronoi(state, district_num, desired_districtings):
 
         # if there is, move on!
         if success:
+            state_district_assigned_list.append(state_district_assigned)
             print(colored("FOUND ONE", "red"))
             for row_idx, row in enumerate(state):
                 for col_idx, entry in enumerate(row):
@@ -79,12 +82,12 @@ def assignDistrictsVoronoi(state, district_num, desired_districtings):
             for centroid in centroid_list: 
                 centroid[0] = rand.randint(0, state_x - 1)
                 centroid[1] = rand.randint(0, state_y - 1)
-            break
+            continue
 
         # else, choose a random adjacency... 
         adjacency_idx = rand.randint(0, len(adjacencies) - 1)
         # and change all the precincts bordering that adjacency to be a member of the smaller district
-        print("adjacencies changed = ", adjacencies[adjacency_idx])
+        # print("adjacencies changed = ", adjacencies[adjacency_idx])
         # pop0 = areas[adjacencies[adjacency_idx][0]]
         # pop1 = areas[adjacencies[adjacency_idx][1]]
         # while(abs(pop0 - pop1) > count_list[adjacency_idx]): 
@@ -107,7 +110,7 @@ def assignDistrictsVoronoi(state, district_num, desired_districtings):
                     if (entry == adjacencies[adjacency_idx][0]) and (state_district_assigned[row_idx][col_idx + 1] == adjacencies[adjacency_idx][1]):
                         state_district_assigned[row_idx][col_idx + 1] = adjacencies[adjacency_idx][0]
 
-        print(state_district_assigned)
+        # print(state_district_assigned)
                     
         for centroid_index in adjacencies[adjacency_idx]: # for each of the affected districts
             dist_sums = np.full(state.shape, 1000)
@@ -122,11 +125,18 @@ def assignDistrictsVoronoi(state, district_num, desired_districtings):
                                     dist_sums[row_idx_ctr][col_idx_ctr] += m.sqrt((row_idx - row_idx_ctr)**2 + (col_idx - col_idx_ctr)**2)
             new_centroid = list(np.unravel_index(dist_sums.argmin(), dist_sums.shape))
             new_centroid[0], new_centroid[1] = new_centroid[1], new_centroid[0]
-            print("changing centroid for ", centroid_index, " from ", centroid_list[centroid_index], " to ", new_centroid)
+            # print("changing centroid for ", centroid_index, " from ", centroid_list[centroid_index], " to ", new_centroid)
             centroid_list[centroid_index] = new_centroid 
+    # return state_district_assigned_list
+    districting_list = districting_list.transpose()
+    return districting_list
 
-state = np.ndarray([16, 16])
-for i in range(0, len(state.flat)):
-    state.flat[i] = rand.random()
+#state = np.ndarray([16, 16])
+#for i in range(0, len(state.flat)):
+#     state.flat[i] = rand.random()
 
-assignDistrictsVoronoi(state, 16, 6)
+#state_district_assigned_list = assignDistrictsVoronoi(state, 16, 3)
+#print(len(state_district_assigned_list))
+#for districting in state_district_assigned_list:
+#    plt.imshow((districting), cmap='Paired', interpolation='nearest')
+#    plt.show()

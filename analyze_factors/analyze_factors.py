@@ -5,10 +5,15 @@ import sys
 import random
 from scipy import stats
 from matplotlib.animation import FuncAnimation
+from voronoi_redistricting import * 
+from modified_random_initial_districts import *
+
+use_voronoi = False
 
 #constants
 dist_factor = .7
 most_democratic = .57
+num_maps = 5
 
 # helper functions for makeCityDistribution
 def wrap(diff, wrap_value):
@@ -38,13 +43,13 @@ def distFromCity(y, x, city_locations, prec_dim_x, prec_dim_y):
     return distance
 
 # input of num_cities, intensity, and target_mean, output of map
-def makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y):
+def makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y, city_locations):
     percent_dem = np.zeros([prec_dim_y, prec_dim_x])
 
-    city_locations = np.empty([num_cities, 2])
-    for city in city_locations:
-        city[0] = random.randint(0, prec_dim_x - 1)
-        city[1] = random.randint(0, prec_dim_y - 1)
+    # city_locations = np.empty([num_cities, 2])
+    # for city in city_locations:
+    #     city[0] = random.randint(0, prec_dim_x - 1)
+    #     city[1] = random.randint(0, prec_dim_y - 1)
     
     for y, row in enumerate(percent_dem):
         for x, column in enumerate(row):
@@ -63,9 +68,50 @@ def assignDistricts(percent_dem, prec_dim_x, prec_dim_y, district_dim_x, distric
             x2 = int(x1 + prec_dim_x/district_dim_x)
             y1 = int(m.floor(d / (prec_dim_x/district_dim_x)) + m.floor(num/district_dim_y)*prec_dim_y/district_dim_y)
             y2 = int(y1 + prec_dim_y/district_dim_y)
-            dist_box = np.take(np.take(percent_dem, range(y1, y2), axis=0, mode='wrap'), range(x1, x2), axis=1, mode='wrap') #this has a pretty serious error please fix
+            dist_box = np.take(np.take(percent_dem, range(y1, y2), axis=0, mode='wrap'), range(x1, x2), axis=1, mode='wrap')
             district[d] = np.average(dist_box)
     return by_district_arr
+
+def makeStateIntoNodes(state):
+    totalPop = 10000
+    groupMemory = []
+    print(state.shape)
+
+    for row in range(state.shape[0]):
+        for col in range(state.shape[1]):
+            nextNode = initialize()
+            #prepare centroid
+            nextNode.centroid = [row, col]
+            #Distinguish the node and the centroids that the node contains
+            nextNode.identity = row*state.shape[1] + col
+            nextNode.precincts.add(nextNode.identity)
+            #find population and area
+            nextNode.population += int(state[row][col] * totalPop / (state.shape[0]*state.shape[1] / 2)) 
+            nextNode.area       += 1
+
+            my_identity = row*state.shape[1] + col
+            myNeighbors = set([my_identity - state.shape[1], my_identity + 1, my_identity + state.shape[1], my_identity - 1])
+
+            if -1 in myNeighbors:
+                myNeighbors.remove(-1)
+
+            nextNode.neighbors.update(myNeighbors)
+            groupMemory.append(nextNode)
+
+    idealPop = totalPop/(0.0+numDists)
+    return groupMemory, idealPop
+    
+def assignDistrictsRandom(state, num_districts):
+    groupMemory, idealPop = makeStateIntoNodes(state)
+    groupList = generateRandomInitialDistricting(groupMemory, num_districts, num_maps, idealPop)
+    boxplot_arr = np.zeros([num_maps, num_districts])
+    for m in range(len(groupList)): #for map but map is a keyword 
+        for d in range(len(districting)): # for district
+            for precinct in districting[d].precincts:
+                boxplot_arr[m][d] += state[m.floor(precinct/state.shape[1]), precinct%state.shape[1]]
+            boxplot_arr[m][d] /= len(districting[d].precincts)
+
+    return boxplot_arr.transpose()
 
 def runExample():
     state = makeCityDistribution(5, 0.96, 0.5, 64, 64) 
@@ -84,109 +130,13 @@ def runExample():
 def sigmoidShift(state, c, a):
     return [1/(1+(1/i-1)*np.exp(-4/(1-4/3*pow(a,2))*c)) for i in state]
 
-# heatmap example: create a lot of maps with heatmaps for slope and linearity of boxplots
-def scratchWork():
-    num_cities = 1 # for now
-
-    dem_percents = np.zeros([10, 10])
-    votes_won = np.zeros([10, 10]) 
-    slopes = np.zeros([10, 10])
-    r_values = np.zeros([10, 10])
-
-    # for a, intensity in enumerate(np.arange(0.5, 1.0, 0.05)): 
-    #     for b, target_mean in enumerate(np.arange(.2, .9, .1)):
-    #         percent_dem = np.zeros([prec_dim_y, prec_dim_x])
-    #         # this is for one possible mapping
-    #         state = makeCityDistribution(percent_dem, num_cities, intensity, target_mean)
-    #         # how many Democrats in this mapping?
-    #         dem_percents[a][b] = np.mean(state.flat)
-    #         boxplot_arr = assignDistricts(state)
-    #         boxplot_arr = np.sort(boxplot_arr, axis=0)
-    #         # in the average (boxplot) scenario of districtings, how many Democratic votes are won?
-    #         distr_medians = [np.median(district) for district in boxplot_arr]
-    #         votes = 0
-    #         for median in distr_medians:
-    #             if median > 0.5:
-    #                 votes += 1
-    #         votes_won[a][b] = votes
-    #         # slope of final boxplot -- vote per district (arbitrary comparison units, essentially)
-    #         lin_regress = stats.linregress(range(0, len(distr_medians)), distr_medians)
-    #         slopes[a][b] = lin_regress.slope
-    #         r_values[a][b] = lin_regress.rvalue
-
-    intensity = 0.96
-    target_mean = 0.5
-    ratios = []
-    votes_won = []
-
-    for a, prec_dim_x in enumerate(np.arange(4,24,4)):
-        ratios.append(prec_dim_y/prec_dim_x)
-        district_dim_x = prec_dim_x/4
-        percent_dem = np.zeros([prec_dim_y, prec_dim_x])
-        # this is for one possible mapping
-        state = makeCityDistribution(percent_dem, num_cities, intensity, target_mean)
-        fig, ax = plt.subplots()
-        plt.imshow((state), cmap='RdBu', interpolation='nearest')
-        # how many Democrats in this mapping?
-        boxplot_arr = assignDistricts(state)
-        boxplot_arr = np.sort(boxplot_arr, axis=0)
-        # in the average (boxplot) scenario of districtings, how many Democratic votes are won?
-        distr_medians = [np.median(district) for district in boxplot_arr]
-        votes = 0
-        for median in distr_medians:
-            if median > 0.5:
-                votes += 1
-        votes_won.append(votes)
-
-    #for a, intensity in enumerate(np.arange(0.5, 1.0, 0.01)):
-    #    percent_dem = np.zeros([prec_dim_y, prec_dim_x])
-    #    # this is for one possible mapping
-    #    state = makeCityDistribution(percent_dem, num_cities, intensity, target_mean)
-    #    print(state)
-    #    # how many Democrats in this mapping?
-    #    boxplot_arr = assignDistricts(state)
-    #    boxplot_arr = np.sort(boxplot_arr, axis=0)
-    #    # in the average (boxplot) scenario of districtings, how many Democratic votes are won?
-    #    distr_medians = [np.median(district) for district in boxplot_arr]
-    #    votes = 0
-    #    for median in distr_medians:
-    #        if median > 0.5:
-    #            votes += 1
-    #    votes_won.append(votes)
-
-    # ax1 = plt.subplot(2, 2, 1)
-    # ax1.set_title("means")
-    # plt.imshow((dem_percents), cmap='RdBu', interpolation='nearest')
-    # 
-    # ax2 = plt.subplot(2, 2, 2)
-    # ax2.set_title("votes_won")
-    # plt.imshow((votes_won), cmap='RdBu', interpolation='nearest')
-    # 
-    # ax3 = plt.subplot(2, 2, 3)
-    # ax3.set_title("slopes")
-    # plt.imshow((slopes), cmap='RdBu', interpolation='nearest')
-    # 
-    # ax4 = plt.subplot(2, 2, 4)
-    # ax4.set_title("r_values")
-    # plt.imshow((r_values), cmap='RdBu', interpolation='nearest')
-
-    #fig, ax = plt.subplots()
-    #plt.imshow((dem_percents), cmap='RdBu', interpolation='nearest')
-
-    fix, ax = plt.subplots()
-    ax.set_xlabel("ratio")
-    ax.set_ylabel("votes won")
-    plt.plot(ratios, votes_won)
-
-    plt.show()
-
 def analysisExample():
     #inputs
     intensity = 0.96
     target_mean = 0.5
     prec_dim_x = 32; prec_dim_y = 32
     district_dim_x = 4; district_dim_y = 4
-    num_cities = 1
+    num_cities = 2
 
     #outputs
     seats_won = []
@@ -199,14 +149,25 @@ def analysisExample():
     if(district_dim_x == district_dim_y):
         prec_dim_x_range = np.arange(district_dim_x, prec_dim_y, district_dim_x)
 
-    iterator_range = prec_dim_x_range
-    iterator_string = "x_dimension"
+    iterator_range = intensity_range 
+    iterator_string = "intensities"
 
-    for prec_dim_x in iterator_range:
+    city_locations = np.empty([num_cities, 2])
+    for city in city_locations:
+        city[0] = random.randint(0, prec_dim_x - 1)
+        city[1] = random.randint(0, prec_dim_y - 1)
+
+    for intensity in iterator_range:
+        print(intensity)
         # create simulated state
-        state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y) 
+        state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y, city_locations) 
         # create ensemble
-        boxplot_arr = assignDistricts(state, prec_dim_x, prec_dim_y, district_dim_x, district_dim_y)
+        # if use_voronoi:
+        #     boxplot_arr = assignDistrictsVoronoi(state, 16, 1)
+        # else:
+        #     boxplot_arr = assignDistricts(state, prec_dim_x, prec_dim_y, district_dim_x, district_dim_y)
+        if True:
+            boxplot_arr = assignDistrictsRandom(state, 16)
         boxplot_arr = np.sort(boxplot_arr, axis=0)
         # these are just used a lot in calculations
         distr_medians = [np.median(district) for district in boxplot_arr]
@@ -282,7 +243,10 @@ def voteSeatCharts():
         # create simulated state
         state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y) 
         # create ensemble
-        boxplot_arr = assignDistricts(state, prec_dim_x, prec_dim_y, district_dim_x, district_dim_y)
+        if use_voronoi:
+            boxplot_arr = assignDistrictsVoronoi(state, 16, 1)
+        else:
+            boxplot_arr = assignDistricts(state, prec_dim_x, prec_dim_y, district_dim_x, district_dim_y)
         boxplot_arr = np.sort(boxplot_arr, axis=0)
         # these are just used a lot in calculations
         distr_medians = [np.median(district) for district in boxplot_arr]
@@ -325,7 +289,5 @@ def voteSeatCharts():
     plt.show()
 
     
-
-    
-#analysisExample()
-voteSeatCharts()
+analysisExample()
+#voteSeatCharts()
