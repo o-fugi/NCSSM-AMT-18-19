@@ -19,7 +19,7 @@ numDists      = 8
 
 #Population difference max
 
-maxDifference = 0.01
+maxDifference = 0.9
 
 
 #Path Finders
@@ -191,8 +191,11 @@ def combineNodes(nodeA, nodeB):
     return newNode
 
 def groomPopulations(Groups, groupMemory):
+    #print("grooming")
     #If everything is going according to plan (i.e. a changeOccured)
     groupBig, groupSmall = findPair(Groups)
+    #print("identityBig = ", groupBig.identity)
+    #print("identitySmall = ", groupSmall.identity)
 
     Groups.remove(groupBig)
     Groups.remove(groupSmall)
@@ -344,6 +347,7 @@ def takeAwayPrecinct(groupBig, groupP, groupMemory):
     groupBig.neighbors = groupBig.neighbors - groupBig.precincts
 
     #In case the precicnt removed was the idenity, re-label the identity
+    #print(len(groupBig.precincts))
     groupBig.identity = min(groupBig.precincts)
 
     #Adjust the area
@@ -365,7 +369,9 @@ def populationsDifferent(Groups, idealPop):
     maxPop = idealPop * (1+maxDifference)
     for g in Groups:
         if g.population > maxPop or g.population < minPop:
-            return True
+            #return True
+            ##################### THIS IS HACKED IN ##################
+            pass
     return False
 
 def overlapping(A,B):
@@ -436,9 +442,6 @@ def readCentroids():
     totalPop = 0
     groupMemory = []
 
-
-
-
     for index in range(len(centroidFile)):
         nextNode = initialize()
         #prepare centroid
@@ -487,7 +490,7 @@ def generateRandomInitialDistricting(groupMemory, numDists, numMaps, idealPop):
     while i < numMaps:
         print()
         print("Working on map ", str(i))
-
+        
         #Reset Groups to initial conditions
         Groups = [copyNode(g) for g in groupMemory]
 
@@ -525,6 +528,7 @@ def generateRandomInitialDistricting(groupMemory, numDists, numMaps, idealPop):
             continue
 
         groupList.append(Groups)
+        i+=1
 
     print()
     print("Done.")
