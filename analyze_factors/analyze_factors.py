@@ -13,7 +13,8 @@ from modified_random_initial_districts import *
 # Reduce duplicated code between vote-seat charts and analyze factors functions
 
 # Boxes disregards the edges of the district, while random_generate and voronoi take into account location of cities
-map_type = "boxes" # should be "random_generate" "boxes" or "voronoi"
+map_type = "random_generate" # should be "random_generate" "boxes" or "voronoi"
+show_states = False
 
 # Constants for generating maps
 dist_factor = .7
@@ -99,10 +100,9 @@ def assignDistricts(percent_dem, prec_dim_x, prec_dim_y, district_dim_x, distric
     return by_district_arr
 
 # Helper function for assignDistrictsRandom, for translating between different ways of representing districts
-def makeStateIntoNodes(state):
+def makeStateIntoNodes(state, numDists):
     totalPop = 10000
     groupMemory = []
-    print(state.shape)
 
     for row in range(state.shape[0]):
         for col in range(state.shape[1]):
@@ -113,8 +113,8 @@ def makeStateIntoNodes(state):
             nextNode.identity = row*state.shape[1] + col
             nextNode.precincts.add(nextNode.identity)
             #find population and area
-            nextNode.population += int(state[row][col] * totalPop / (state.shape[0]*state.shape[1] / 2)) 
-            nextNode.area       += 1
+            nextNode.population = int(totalPop/(state.shape[0]*state.shape[1])) #int(state[row][col] * totalPop / (state.shape[0]*state.shape[1] / 2)) 
+            nextNode.area       = 1
 
             my_identity = row*state.shape[1] + col
             myNeighbors = set([my_identity - state.shape[1], my_identity + 1, my_identity + state.shape[1], my_identity - 1])
@@ -131,7 +131,7 @@ def makeStateIntoNodes(state):
 # Uses (misuses) Sam Eure's code to generate random districts
 # Currently, not corrected for population
 def assignDistrictsRandom(state, num_districts):
-    groupMemory, idealPop = makeStateIntoNodes(state)
+    groupMemory, idealPop = makeStateIntoNodes(state, num_districts)
     groupList = generateRandomInitialDistricting(groupMemory, num_districts, num_maps, idealPop)
     boxplot_arr = np.zeros([num_maps, num_districts])
     for i, districting in enumerate(groupList): #for map but map is a keyword 
@@ -200,16 +200,15 @@ def analysisExample():
         prec_dim_x_range = np.arange(district_dim_x, prec_dim_y, district_dim_x)
     city_dist_center_range = np.arange(0, 1.0, 0.05)
 
-    iterator_range = city_dist_center_range 
-    iterator_string = "city_dist_from_center"
+    iterator_range = intensity_range
+    iterator_string = "intensities"
 
     city_locations = np.empty([num_cities, 2])
     for city in city_locations:
         city[0] = random.randint(0, prec_dim_x - 1)
         city[1] = random.randint(0, prec_dim_y - 1)
 
-    for city_dist_center in iterator_range:
-        print(city_dist_center)
+    for intensity in iterator_range:
         # create simulated state
         state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y, city_locations, city_dist_set, city_dist_center) 
         # create ensemble
@@ -237,8 +236,9 @@ def analysisExample():
         # find slopes at 50
         slopes_at_50.append(distr_medians[seats_lost] - distr_medians[seats_lost - 1])
         # for debugging, create all graphs
-        plt.imshow((state), cmap='RdBu', interpolation='nearest')
-        plt.show()
+        if show_states:
+            plt.imshow((state), cmap='RdBu', interpolation='nearest')
+            plt.show()
 
     ax1 = plt.subplot(2, 2, 1)
     ax1.set_title("average slopes")
@@ -353,6 +353,6 @@ def voteSeatCharts():
     plt.show()
 
     
-#analysisExample()
+analysisExample()
 #voteSeatCharts()
 #runExample()

@@ -19,7 +19,7 @@ numDists      = 8
 
 #Population difference max
 
-maxDifference = 0.9
+maxDifference = 0.05
 
 
 #Path Finders
@@ -369,9 +369,7 @@ def populationsDifferent(Groups, idealPop):
     maxPop = idealPop * (1+maxDifference)
     for g in Groups:
         if g.population > maxPop or g.population < minPop:
-            #return True
-            ##################### THIS IS HACKED IN ##################
-            pass
+            return True
     return False
 
 def overlapping(A,B):
