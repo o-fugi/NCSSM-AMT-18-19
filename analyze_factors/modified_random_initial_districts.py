@@ -19,7 +19,7 @@ numDists      = 8
 
 #Population difference max
 
-maxDifference = 0.05
+maxDifference = 0.15
 
 
 #Path Finders
@@ -481,7 +481,8 @@ def readCentroids():
 #----- Starting Algorithm -----------------------------------------------------------------------
 
 def generateRandomInitialDistricting(groupMemory, numDists, numMaps, idealPop):
-    print("Starting with ", len(groupMemory), " precints")
+    print("Starting with ", len(groupMemory), " precincts")
+    print("Starting with ", numDists, " districts")
     groupList = []
 
     i = 0
