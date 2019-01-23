@@ -26,7 +26,6 @@ maxDifference = 0.15
 #dataDirPath   = "../../CuratedData/"
 #outFilePrefix = "../../RandomDistricts/"
 #dataDirPath = "../../CuratedData/"
-dataDirPath = "~/mathingly/"
 
 mapType    = "MID_CROSS"
 mapChosen     = "MDPrecinct_"+mapType
