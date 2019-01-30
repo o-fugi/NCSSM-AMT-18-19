@@ -17,11 +17,11 @@ district_num_iterator = IteratingFactor("district_num", [3, 4, 5, 6, 7, 8, 9], 4
 intensity = intensity_iterator.default_value
 target_mean = target_mean_iterator.default_value
 num_cities = num_cities_iterator.default_value
-district_dim_x = district_num_iterator.default_value
-district_dim_y = district_dim_x
+district_num_x = district_num_iterator.default_value
+district_num_y = district_num_x
 
-precinct_dimension_iterator = IteratingFactor("prec_dim", np.arange(32, 128, 64/district_dim_x), 32, 5)
+precinct_dimension_iterator = IteratingFactor("prec_dim", np.arange(32, 128, 32/district_num_x), 32, 5)
 
 prec_dim_x = precinct_dimension_iterator.default_value
 prec_dim_y = prec_dim_x
-district_dimension_default = precinct_dimension_iterator.default_value / district_num_iterator.default_value
+district_dimension_default = int(precinct_dimension_iterator.default_value / district_num_iterator.default_value)
