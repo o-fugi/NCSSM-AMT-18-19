@@ -19,7 +19,7 @@ numDists      = 8
 
 #Population difference max
 
-maxDifference = 0.15
+maxDifference = 0.05
 
 
 #Path Finders

@@ -13,16 +13,15 @@ from modified_random_initial_districts import *
 from iterating_factors import *
 import matplotlib.colors as mcolors
 
-
 ## Code Organization TODOs ##
 # Reduce duplicated code between vote-seat charts and analyze factors functions
 # Correct >100% Democratic bug?
 
 # Boxes disregards the edges of the district, while random_generate and voronoi take into account location of cities
-map_type = "boxes" # should be "random_generate" "boxes" or "voronoi"
+map_type = "random_generate" # should be "random_generate" "boxes" or "voronoi"
 show_states = False 
 show_boxplots = False 
-show_districts = False  
+show_districts = False 
 
 # Constants for generating maps
 dist_factor = .7
@@ -30,7 +29,7 @@ most_democratic = 1.0
 least_democratic = 0.0
 
 # For random_generate map type
-num_maps = 1
+num_maps = 20
 
 # For vote-seat curves
 a = 0.1
@@ -76,7 +75,7 @@ def makeCityDistribution(iterating_factor, value, city_locations):
         num_cities = value
     if iterating_factor.idx == 3:
         city_dist_center = value
-        # num_cities = 1
+        num_cities = 1
     if iterating_factor.idx == 4:
         district_num_x = value
         district_num_y = value
@@ -157,7 +156,7 @@ def makeStateIntoNodes(state, numDists):
             #find population and area
             #nextNode.population = int(totalPop/(state.shape[0]*state.shape[1])) #int(state[row][col] * totalPop / (state.shape[0]*state.shape[1] / 2)) 
             #print("%dem = ", state[row][col])
-            nextNode.population = ((state[row][col]  - 0.5)**3 + 0.5) * (totalPop * 2 / (state.shape[0] * state.shape[1]))
+            nextNode.population = ((state[row][col]  - 0.5)**5 + 0.5) * (totalPop * 2 / (state.shape[0] * state.shape[1]))
             #print(nextNode.population)
             nextNode.area       = 1
 
@@ -171,9 +170,22 @@ def makeStateIntoNodes(state, numDists):
                 myNeighbors.remove(my_identity + state.shape[1])
             if(col == state.shape[1] - 1):
                 myNeighbors.remove(my_identity + 1)
+            #if(row == 0):
+            #    myNeighbors.remove(my_identity - state.shape[1])
+            #    myNeighbors.add(my_identity + state.shape[1] * (state.shape[0] - 1))
+            #if(col == 0):
+            #    myNeighbors.remove(my_identity - 1)
+            #    myNeighbors.add(my_identity + state.shape[1] - 1)
+            #if(row == state.shape[0] - 1):
+            #    myNeighbors.remove(my_identity + state.shape[1])
+            #    myNeighbors.add(my_identity - state.shape[1] * (state.shape[0] - 1))
+            #if(col == state.shape[1] - 1):
+            #    myNeighbors.remove(my_identity + 1)
+            #    myNeighbors.add(my_identity - (state.shape[1] - 1))
 
             if -1 in myNeighbors:
                 myNeighbors.remove(-1)
+
 
             nextNode.neighbors.update(myNeighbors)
             groupMemory.append(nextNode)
@@ -244,13 +256,15 @@ def sigmoidShift(state, c, a):
 def analysisExample():
     seats_won = []
     average_slopes = []
+    average_distances = []
     r_values = []
     slopes_at_50 = [] # slope for middle 50% of districts 
     vc_curves = []
     vc_slopes = []
+    distances = []
 
     # choose which input map factor to change
-    iterating_factor = precinct_dimension_iterator 
+    iterating_factor = city_dist_center_iterator 
 
     # choose city_locations if they remain constant
     city_locations = []
@@ -267,6 +281,10 @@ def analysisExample():
         if show_states:
             fig_state, ax_state = plt.subplots()
             ax_state.imshow((state), cmap='RdBu', interpolation='nearest')
+            ax_state.set_xticklabels([])
+            ax_state.set_yticklabels([])
+            ax_state.set_xticks([])
+            ax_state.set_yticks([])
             plt.show()
         # create ensemble
         if map_type == "voronoi":
@@ -278,6 +296,7 @@ def analysisExample():
         boxplot_arr = np.sort(boxplot_arr, axis=0)
         # these are just used a lot in calculations
         distr_medians = [np.median(district) for district in boxplot_arr]
+        distr_medians = np.asarray(distr_medians)
         # find average slope and r value
         lin_regress = stats.linregress(range(0, len(distr_medians)), distr_medians)
         average_slopes.append(lin_regress.slope)
@@ -306,6 +325,9 @@ def analysisExample():
                 seats_won.append(fractional_won)
                 print("seats_won = ", seats_won[-1], " out of ", district_num_x*district_num_y/2 ) 
         vc_curves.append(swing_votes) #add to the list of vote-seat curves
+        # try new method of electoral responsiveness??
+        distance_from_center = np.mean(abs(distr_medians - 0.5))
+        distances.append(distance_from_center)
         # for debugging, create all graphs
         if show_boxplots:
             fig, ax = plt.subplots()
@@ -320,7 +342,8 @@ def analysisExample():
             ax.set_title("%s = %s " % (iterating_factor.name, str(value)))
             plt.show()
 
-    # seats_won_avg = np.convolve(seats_won, np.ones((3,))/3, mode='same')
+
+    seats_won_avg = np.convolve(seats_won, np.ones((3,))/3, mode='same')
 
     # vote-seat curves
     fig_vc, ax_vc = plt.subplots()
@@ -343,16 +366,18 @@ def analysisExample():
 
     fig, ax = plt.subplots()
     ax1 = plt.subplot(2, 1, 1)
-    ax1.set_title("vote seat curve slopes")
+    ax1.set_title("Boxplot Distances from 50%")
     ax1.set_xlabel(iterating_factor.name)
-    ax1.set_ylabel("slope")
-    #plt.plot(iterating_factor.iterating_range, [i - j for (i, j) in zip(average_slopes, slopes_at_50)])
-    ax1.plot(iterating_factor.iterating_range, vc_slopes)
+    ax1.set_xticklabels([])
+    ax1.set_ylabel("Percent Democratic")
+    # ax1.plot(iterating_factor.iterating_range, [i - j for (i, j) in zip(average_slopes, slopes_at_50)])
+    ax1.plot(iterating_factor.iterating_range, distances)
 
     ax2 = plt.subplot(2, 1, 2)
-    ax2.set_title("difference between actual and expected seats won")
+    ax2.set_title("Difference between Actual and Expected Seats Won")
     ax2.set_xlabel(iterating_factor.name)
-    ax2.set_ylabel("advantage")
+    ax2.set_xticklabels([])
+    ax2.set_ylabel("Seat Advantage")
     print(seats_won)
     if iterating_factor == precinct_dimension_iterator:
         district_num_array = [j*district_num_y/2 for (i, j) in zip(seats_won, range(district_num_iterator.default_value, int(precinct_dimension_iterator.iterating_range[-1]/district_dimension_default + 1)))]
@@ -361,7 +386,9 @@ def analysisExample():
     elif iterating_factor == district_num_iterator:
         ax2.plot(iterating_factor.iterating_range, [i / (j**2/2) for (i, j) in zip(seats_won, [k**2 for k in district_num_iterator.iterating_range])])
     else:
-        ax2.plot(iterating_factor.iterating_range, [i / (district_num_x*district_num_y/2) for i in seats_won])
+        ax2.plot(iterating_factor.iterating_range, [i - (district_num_x*district_num_y/2) for i in seats_won])
+
+    plt.tight_layout()
 
     # ax3 = plt.subplot(2, 2, 3)
     # ax3.set_title("seats_won")

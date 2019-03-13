@@ -8,10 +8,10 @@ class IteratingFactor:
         self.default_value = default_value_
         self.idx = idx_
 
-intensity_iterator = IteratingFactor("city_size", np.arange(0.8, 1.0, 0.02), 0.87, 0)
+intensity_iterator = IteratingFactor("City Size", np.arange(0.8, 1.0, 0.02), 0.94, 0)
 target_mean_iterator = IteratingFactor("target_mean", np.arange(.45, .55, 0.01), 0.5, 1)
 num_cities_iterator = IteratingFactor("num_cities", np.arange(1, 10, 1), 2, 2)
-city_dist_center_iterator = IteratingFactor("city_dist_center", np.arange(0.5, 1.0, 0.05), 0, 3)
+city_dist_center_iterator = IteratingFactor("city_dist_center", np.arange(0.0, 0.8, 0.1), 0, 3)
 district_num_iterator = IteratingFactor("district_num", [3, 4, 5, 6, 7, 8, 9], 4, 4)
 
 intensity = intensity_iterator.default_value
