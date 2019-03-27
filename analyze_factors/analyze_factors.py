@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -21,7 +21,7 @@ import matplotlib.colors as mcolors
 map_type = "random_generate" # should be "random_generate" "boxes" or "voronoi"
 show_states = False 
 show_boxplots = False 
-show_districts = False 
+show_districts = False
 
 # Constants for generating maps
 dist_factor = .7
@@ -65,7 +65,7 @@ def distFromCityNoWrap(y, x, city_locations, prec_dim_x, prec_dim_y):
 # More research needs to be done on the actual distribution of Democrats around a city
 def makeCityDistribution(iterating_factor, value, city_locations):
     # (num_cities, intensity, target_mean, prec_dim_x, prec_dim_y, city_locations, city_dist_set, city_dist_center, num_cities_set):
-    global intensity, target_mean, num_cities, city_dist_center, district_num_x, district_num_y, prec_dim_x, prec_dim_y
+    global intensity, target_mean, num_cities, city_dist_center, district_num_x, district_num_y, prec_dim_x, prec_dim_y, city_clustering_value
 
     if iterating_factor.idx == 0:
         intensity = value
@@ -84,6 +84,14 @@ def makeCityDistribution(iterating_factor, value, city_locations):
         district_num_x = int(value / district_dimension_default)
         prec_dim_y = int(precinct_dimension_iterator.default_value)
         num_cities = district_num_x
+    if iterating_factor.idx == 6:
+        prec_dim_x = 64
+        prec_dim_y = 16
+        city_clustering_value = value
+        num_cities = 2
+        #district_num_x = 5
+        #district_num_y = 5
+        
 
     print("prec dim x", prec_dim_x, "prec dim y", prec_dim_y)
     print("dist dim x ", district_num_x, " dist dim y ", district_num_y)
@@ -95,6 +103,11 @@ def makeCityDistribution(iterating_factor, value, city_locations):
         for city in range(len(city_locations)):
             city_locations[city][0] = int(prec_dim_x - prec_dim_x/2*city_dist_center if city==0 else prec_dim_x/2*city_dist_center)
             city_locations[city][1] = int(prec_dim_y - prec_dim_y/2*city_dist_center if city==0 else prec_dim_y/2*city_dist_center)
+    if iterating_factor == city_clustering_iterator:
+        city_locations = np.empty([num_cities, 2])
+        for city in range(len(city_locations)):
+            city_locations[city][0] = int(prec_dim_x - prec_dim_x/2*city_clustering_value if city==0 else prec_dim_x/2*city_clustering_value)
+            city_locations[city][1] = prec_dim_y/2 
     elif iterating_factor == num_cities_iterator or iterating_factor == precinct_dimension_iterator:
         city = [0, 0]
         city[0] = random.randint(0, prec_dim_x - 1)
@@ -227,6 +240,7 @@ def runExample():
     num_cities_set = False
     city_dist_set = False
     city_dist_center = 0 
+    city_clustering_iterator = 0
 
     city_locations = np.empty([num_cities, 2])
     for city in city_locations:
@@ -264,7 +278,7 @@ def analysisExample():
     distances = []
 
     # choose which input map factor to change
-    iterating_factor = city_dist_center_iterator 
+    iterating_factor = city_clustering_iterator 
 
     # choose city_locations if they remain constant
     city_locations = []
