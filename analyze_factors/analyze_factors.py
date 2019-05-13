@@ -18,8 +18,8 @@ import matplotlib.colors as mcolors
 # Correct >100% Democratic bug?
 
 # Boxes disregards the edges of the district, while random_generate and voronoi take into account location of cities
-map_type = "random_generate" # should be "random_generate" "boxes" or "voronoi"
-show_states = False 
+map_type = "boxes" # should be "random_generate" "boxes" or "voronoi"
+show_states = True
 show_boxplots = False 
 show_districts = False
 
@@ -29,11 +29,14 @@ most_democratic = 1.0
 least_democratic = 0.0
 
 # For random_generate map type
-num_maps = 20
+num_maps = 10
 
 # For vote-seat curves
 a = 0.1
 swing_range = np.arange(-a, a, 0.01)
+
+max_seats = []
+seats_won_arrays = []
 
 # Helper functions for makeCityDistribution
 def wrap(diff, wrap_value):
@@ -175,26 +178,28 @@ def makeStateIntoNodes(state, numDists):
 
             my_identity = row*state.shape[1] + col
             myNeighbors = set([my_identity - state.shape[1], my_identity + 1, my_identity + state.shape[1], my_identity - 1])
-            if(row == 0):
-                myNeighbors.remove(my_identity - state.shape[1])
-            if(col == 0):
-                myNeighbors.remove(my_identity - 1)
-            if(row == state.shape[0] - 1):
-                myNeighbors.remove(my_identity + state.shape[1])
-            if(col == state.shape[1] - 1):
-                myNeighbors.remove(my_identity + 1)
             #if(row == 0):
             #    myNeighbors.remove(my_identity - state.shape[1])
-            #    myNeighbors.add(my_identity + state.shape[1] * (state.shape[0] - 1))
             #if(col == 0):
             #    myNeighbors.remove(my_identity - 1)
-            #    myNeighbors.add(my_identity + state.shape[1] - 1)
             #if(row == state.shape[0] - 1):
             #    myNeighbors.remove(my_identity + state.shape[1])
-            #    myNeighbors.add(my_identity - state.shape[1] * (state.shape[0] - 1))
             #if(col == state.shape[1] - 1):
             #    myNeighbors.remove(my_identity + 1)
-            #    myNeighbors.add(my_identity - (state.shape[1] - 1))
+            if(row == 0):
+                myNeighbors.remove(my_identity - state.shape[1])
+                #myNeighbors.add(my_identity + state.shape[1] * (state.shape[0] - 1))
+            if(col == 0):
+                myNeighbors.remove(my_identity - 1)
+                #myNeighbors.add(my_identity + state.shape[1] - 1)
+            if(row == state.shape[0] - 1):
+                myNeighbors.remove(my_identity + state.shape[1])
+                #myNeighbors.add(my_identity - state.shape[1] * (state.shape[0] - 1))
+            if(col == state.shape[1] - 1):
+                myNeighbors.remove(my_identity + 1)
+                #myNeighbors.add(my_identity - (state.shape[1] - 1))
+
+            print(nextNode.identity, myNeighbors)
 
             if -1 in myNeighbors:
                 myNeighbors.remove(-1)
@@ -224,41 +229,11 @@ def assignDistrictsRandom(state, num_districts):
         district_colorings = np.zeros_like(state)
         for d in range(len(groupList[0])): # for district
             for precinct in districting[d].precincts:
-                district_colorings[m.floor(precinct/state.shape[1]), int(precinct % state.shape[1])] = boxplot_arr[0][d]
-        plt.imshow((district_colorings), cmap='RdBu', interpolation='nearest')
+                district_colorings[m.floor(precinct/state.shape[1]), int(precinct % state.shape[1])] = d/5 #boxplot_arr[0][d]
+        plt.imshow((district_colorings), cmap='hsv', interpolation='nearest')
         plt.show()
 
     return boxplot_arr.transpose()
-
-# Creates city distribution with some default values and shows the boxplot
-def runExample():
-    intensity = 0.96
-    target_mean = 0.5
-    prec_dim_x = 32; prec_dim_y = 32
-    district_num_x = 4; district_num_y = 4
-    num_cities = 5
-    num_cities_set = False
-    city_dist_set = False
-    city_dist_center = 0 
-    city_clustering_iterator = 0
-
-    city_locations = np.empty([num_cities, 2])
-    for city in city_locations:
-        city[0] = random.randint(0, prec_dim_x - 1)
-        city[1] = random.randint(0, prec_dim_y - 1)
-
-    state = makeCityDistribution(num_cities, intensity, target_mean, prec_dim_x, prec_dim_y, city_locations, city_dist_set, city_dist_center, num_cities_set) 
-    boxplot_arr = assignDistrictsBoxes(state, prec_dim_x, prec_dim_y, district_num_x, district_num_y)
-
-    boxplot_arr = np.sort(boxplot_arr, axis=0)
-    organized_medians = [np.median(district) for district in boxplot_arr]
-    fig, ax = plt.subplots()
-    ax.boxplot(np.transpose(boxplot_arr))
-
-    ax.set_xlabel("district")
-    ax.set_ylabel("percent Democratic")
-    ax.axis([1, 16, 0.45, 0.55])
-    plt.show()
 
 def sigmoidShift(state, c, a):
     return [1/(1+(1/i-1)*np.exp(-4/(1-4/3*pow(i,2))*c)) for i in state]
@@ -359,24 +334,24 @@ def analysisExample():
 
     seats_won_avg = np.convolve(seats_won, np.ones((3,))/3, mode='same')
 
-    # vote-seat curves
-    fig_vc, ax_vc = plt.subplots()
-    normalize = mcolors.Normalize(vmin=min(iterating_factor.iterating_range), vmax=max(iterating_factor.iterating_range))
-    colormap = cm.jet
-    for i in range(len(vc_curves)):
-        ax_vc.plot(swing_range+0.5, vc_curves[i], color=colormap(normalize(iterating_factor.iterating_range[i]))) 
-    ax_vc.set_title("Vote Seat Curves for %s" % iterating_factor.name)
-    ax_vc.set_ylabel("Votes Won")
-    ax_vc.set_xlabel("% Democratic")
+    ## vote-seat curves
+    #fig_vc, ax_vc = plt.subplots()
+    #normalize = mcolors.Normalize(vmin=min(iterating_factor.iterating_range), vmax=max(iterating_factor.iterating_range))
+    #colormap = cm.jet
+    #for i in range(len(vc_curves)):
+    #    ax_vc.plot(swing_range+0.5, vc_curves[i], color=colormap(normalize(iterating_factor.iterating_range[i]))) 
+    #ax_vc.set_title("Vote Seat Curves for %s" % iterating_factor.name)
+    #ax_vc.set_ylabel("Votes Won")
+    #ax_vc.set_xlabel("% Democratic")
 
-    for curve in vc_curves:
-        lin_regress_vc = stats.linregress(swing_range, curve)
-        vc_slopes.append(lin_regress_vc.slope)
+    #for curve in vc_curves:
+    #    lin_regress_vc = stats.linregress(swing_range, curve)
+    #    vc_slopes.append(lin_regress_vc.slope)
 
-    scalarmappable = cm.ScalarMappable(norm=normalize, cmap=colormap)
-    scalarmappable.set_array(iterating_factor.iterating_range)
-    cbar = plt.colorbar(scalarmappable)
-    cbar.set_label(iterating_factor.name, rotation=270)
+    #scalarmappable = cm.ScalarMappable(norm=normalize, cmap=colormap)
+    #scalarmappable.set_array(iterating_factor.iterating_range)
+    #cbar = plt.colorbar(scalarmappable)
+    #cbar.set_label(iterating_factor.name, rotation=270)
 
     fig, ax = plt.subplots()
     ax1 = plt.subplot(2, 1, 1)
@@ -402,22 +377,30 @@ def analysisExample():
     else:
         ax2.plot(iterating_factor.iterating_range, [i - (district_num_x*district_num_y/2) for i in seats_won])
 
+    print("max seats won occured at ", iterating_factor.iterating_range[seats_won.index(max(seats_won))])
+    max_seats.append(iterating_factor.iterating_range[seats_won.index(max(seats_won))])
+
+
     plt.tight_layout()
 
-    # ax3 = plt.subplot(2, 2, 3)
-    # ax3.set_title("seats_won")
-    # ax3.set_xlabel(iterating_factor.name)
-    # ax3.set_ylabel("number of seats won out of %d" % (district_num_x*district_num_y))
-    # plt.plot(iterating_factor.iterating_range, seats_won)
-
-    # ax4 = plt.subplot(2, 2, 4)
-    # ax4.set_title("slope of near-50% districts")
-    # ax4.set_xlabel(iterating_factor.name)
-    # ax4.set_ylabel("slope")
-    # plt.plot(iterating_factor.iterating_range, slopes_at_50)
     print(iterating_factor.name, map_type)
 
-    plt.savefig("/home/ofugikawa/Factor_" + iterating_factor.name + "_MapType_" + map_type + ".png")
+    #plt.savefig("/home/ofugikawa/Factor_" + iterating_factor.name + "_MapType_" + map_type + ".png")
+    #plt.show()
+    return [i - (district_num_x*district_num_y/2) for i in seats_won]
+
+
+
+if __name__=="__main__":
+    for number_of_cities in np.arange(1, 10, 1):
+        num_ciites = number_of_cities
+        seats_won_arrays.append(analysisExample())
+
+    print(seats_won_arrays)
+
+    for i in range(len(seats_won_arrays)):
+        plt.plot(np.arange(0.5, 1.0, 0.05), seats_won_arrays[i])
+
     plt.show()
 
-analysisExample()
+    #print(max_seats)
