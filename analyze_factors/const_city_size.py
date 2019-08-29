@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # city constants
-max_democratic = 0.7
+max_democratic = 0.6
 target_integral = 4.822
 
 def power_percent_dem(distance, width, intensity):

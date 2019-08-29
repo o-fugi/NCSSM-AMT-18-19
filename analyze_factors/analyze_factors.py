@@ -20,13 +20,13 @@ map_type = "boxes" # should be "random_generate" "boxes" or "voronoi"
 city_type = "power" # should be "power" or "exponential"
 show_states = False
 show_boxplots = False 
-show_districts = True 
+show_districts = False 
 
 # Constants for generating maps
 most_democratic = 0.6
 
 # For random_generate map type
-num_maps = 1
+num_maps = 5
 
 # For vote-seat curves
 a = 0.1
@@ -115,7 +115,8 @@ def makeCityDistribution(iterating_factor, value, city_locations):
         city_locations.append(city)
 
     target_integral = 5.5
-    width = return_width(intensity, 10, target_integral)
+    #width = return_width(intensity, 10, target_integral)
+    width = 0.4
 
     # Assign percent democratic to precincts
     for y, row in enumerate(percent_dem):
@@ -133,6 +134,70 @@ def makeCityDistribution(iterating_factor, value, city_locations):
 
     print(np.mean(percent_dem))
     return percent_dem, city_locations
+
+def makeCityDistribution2(iterating_factor, value, city_locations):
+    global intensity, target_mean, num_cities, city_dist_center, district_num_x, district_num_y, prec_dim_x, prec_dim_y
+
+    if iterating_factor.idx == 0:
+        intensity = value
+    if iterating_factor.idx == 1:
+        target_mean = value
+    if iterating_factor.idx == 2:
+        num_cities = value
+    if iterating_factor.idx == 3:
+        city_dist_center = value
+        # num_cities = 1
+    if iterating_factor.idx == 4:
+        district_num_x = value
+        district_num_y = value
+    if iterating_factor.idx == 5:
+        prec_dim_x = int(value)
+        district_num_x = int(value / district_numension_default)
+        prec_dim_y = int(precinct_dimension_iterator.default_value)
+        num_cities = 1
+
+    print("prec dim x", prec_dim_x, "prec dim y", prec_dim_y)
+    print("dist dim x ", district_num_x, " dist dim y ", district_num_y)
+
+    percent_dem = np.zeros([prec_dim_y, prec_dim_x])
+
+    if iterating_factor == city_dist_center_iterator:
+        city_locations = np.empty([num_cities, 2])
+        for city in range(len(city_locations)):
+            city_locations[city][0] = int(prec_dim_x - prec_dim_x/2*city_dist_center if city==0 else prec_dim_x/2*city_dist_center)
+            city_locations[city][1] = int(prec_dim_y - prec_dim_y/2*city_dist_center if city==0 else prec_dim_y/2*city_dist_center)
+    elif iterating_factor == num_cities_iterator:
+        city = [0, 0]
+        city[0] = random.randint(0, prec_dim_x - 1)
+        city[1] = random.randint(0, prec_dim_y - 1)
+        city_locations.append(city)
+    elif iterating_factor == precinct_dimension_iterator:
+        city_locations = np.empty([num_cities, 2])
+        city_locations[0] = [int(prec_dim_x/2), int(prec_dim_y/2)]
+
+    print(city_locations)
+
+    if map_type == "voronoi" or map_type == "random_generate":
+        for y, row in enumerate(percent_dem):
+            for x, column in enumerate(row):
+                factor = distFromCityNoWrap(y, x, city_locations, prec_dim_x, prec_dim_y)
+                row[x] = m.pow(intensity, factor)
+    else:
+        for y, row in enumerate(percent_dem):
+            for x, column in enumerate(row):
+                factor = distFromCityWrap(y, x, city_locations, prec_dim_x, prec_dim_y)
+                row[x] = m.pow(intensity, factor)
+
+    percent_dem *= target_mean/np.mean(percent_dem) # TODO: needs work to make sure the percent Democratic doesn't go above 100%. current method is highly flawed
+    #percent_dem = sigmoidShift(percent_dem, target_mean - np.mean([percent_dem]), 1)
+    # for row in range(len(percent_dem)):
+    #     for col in range(len(percent_dem[0])):
+    #         percent_dem[row][col] = min(percent_dem[row][col], most_democratic)
+    #         percent_dem[row][col] = max(percent_dem[row][col], least_democratic)
+
+    print(np.mean(percent_dem))
+    return percent_dem, city_locations
+
 
 # Returns boxes districting (no regard for location of cities)
 # Input of map, output of np.array where every row is a district
@@ -247,7 +312,7 @@ def analysisExample():
     distances = []
 
     # choose which input map factor to change
-    iterating_factor = intensity_iterator 
+    iterating_factor = city_clustering_iterator 
 
     # choose city_locations if they remain constant
     city_locations = []
@@ -368,9 +433,10 @@ def analysisExample():
         ax2.plot(iterating_factor.iterating_range, np.true_divide(seats_won, district_num_array)) 
     elif iterating_factor == district_num_iterator:
         ax2.plot(iterating_factor.iterating_range, [i / (j**2/2) for (i, j) in zip(seats_won, [k**2 for k in district_num_iterator.iterating_range])])
+    elif iterating_factor == intensity_iterator:
+        ax2.plot([1/i for i in iterating_factor.iterating_range], [i - (district_num_x*district_num_y/2) for i in seats_won])
     else:
-        #ax2.plot(iterating_factor.iterating_range, [i - (district_num_x*district_num_y/2) for i in seats_won])
-        ax2.plot(iterating_factor.iterating_range, seats_won)
+        ax2.plot(iterating_factor.iterating_range, [i - (district_num_x*district_num_y/2) for i in seats_won])
 
     print("max seats won occured at ", iterating_factor.iterating_range[seats_won.index(max(seats_won))])
     max_seats.append(iterating_factor.iterating_range[seats_won.index(max(seats_won))])
@@ -387,17 +453,17 @@ def analysisExample():
 
 
 if __name__=="__main__":
-    #for number_of_cities in np.arange(1, 10, 1):
-    #    num_ciites = number_of_cities
-    #    seats_won_arrays.append(analysisExample())
+    for number_of_cities in np.arange(0.2, 0.7, 0.05):
+        intensity = number_of_cities
+        seats_won_arrays.append(analysisExample())
 
-    #print(seats_won_arrays)
+    print(seats_won_arrays)
 
-    #for i in range(len(seats_won_arrays)):
-    #    plt.plot(np.arange(0.5, 1.0, 0.05), seats_won_arrays[i])
+    for i in range(len(seats_won_arrays)):
+        plt.plot(np.arange(0.5, 1.0, 0.05), seats_won_arrays[i])
 
-    #plt.show()
+    plt.show()
 
-    analysisExample()
+    #analysisExample()
 
     #print(max_seats)
